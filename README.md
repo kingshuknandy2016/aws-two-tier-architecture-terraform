@@ -70,41 +70,43 @@ Detailed infrastructure diagram (Mermaid) with the 10 main components, styled to
 10. **Private EC2 Security Group**  
 
 ```mermaid
-flowchart LR
-    %% 1. AWS Account / Region
-    subgraph AWS["AWS Cloud (Region)"]
+flowchart TB
 
-      %% 2. VPC
-      subgraph VPC["VPC (10.0.0.0/16)"]
+User["👨‍💻 Admin / Developer Laptop"]
 
-        %% 3. Internet Gateway
-        IGW["Internet Gateway\n(aws_internet_gateway.igw)"]
+subgraph AWS["AWS Cloud"]
 
-        %% 4. Public Route Table
-        RT["Public Route Table\n(aws_route_table.public_rt)\n0.0.0.0/0 -> IGW"]
+    subgraph VPC["VPC (10.0.0.0/16)"]
 
-        %% 5. Public Subnet
-        subgraph PublicSubnet["Public Subnet (10.0.1.0/24)\n(aws_subnet.public_subnet)"]
-          SG_PUB["Public EC2 SG\n(aws_security_group.public_ec2_sg)\nIngress: SSH 22 from public_ssh_cidr\nEgress: all"]
-          PUB_EC2["Public EC2 (Bastion)\n(aws_instance.public_ec2)\nAMI: ami-0f559c3642608c138\nType: t3.micro\nkey_name"]
+        IGW["🌐 Internet Gateway"]
+
+        subgraph PUB["Public Subnet (10.0.1.0/24)"]
+
+            SG1["Security Group<br>Allow SSH (22) from Admin IP"]
+
+            Bastion["🖥 Bastion Host<br>EC2 Instance<br>Public IP"]
+
         end
 
-        %% 6. Private Subnet
-        subgraph PrivateSubnet["Private Subnet (10.0.3.0/24)\n(aws_subnet.private_subnet)"]
-          SG_PRIV["Private EC2 SG\n(aws_security_group.private_ec2_sg)\nIngress: SSH 22 from public_ec2_sg\nEgress: all"]
-          PRIV_EC2["Private EC2\n(aws_instance.private_ec2)\nAMI: ami-0f559c3642608c138\nType: t3.micro\nkey_name"]
+        subgraph PRIV["Private Subnet (10.0.3.0/24)"]
+
+            SG2["Security Group<br>Allow SSH (22) from Bastion"]
+
+            PrivateEC2["🖥 Private EC2 Instance<br>No Public IP"]
+
         end
 
-      end
+        Route["Route Table<br>0.0.0.0/0 → Internet Gateway"]
+
     end
+end
 
-    Internet["Client / Internet\n(Your laptop)"] -->|"SSH 22 from public_ssh_cidr"| SG_PUB
-    SG_PUB --> PUB_EC2
-    PUB_EC2 -->|"SSH 22 (bastion jump)"| SG_PRIV
-    SG_PRIV --> PRIV_EC2
-
-    RT --> PublicSubnet
-    IGW --- RT
+User -->|SSH 22| IGW
+IGW --> Route
+Route --> Bastion
+SG1 --> Bastion
+Bastion -->|SSH Jump| SG2
+SG2 --> PrivateEC2
 ```
 
 This shows, in order, AWS-style:
